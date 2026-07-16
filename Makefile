@@ -46,6 +46,15 @@ exec:
 logs:
 	docker compose logs -f app
 
+front-install:
+	npm ci
+
+front-dev:
+	npm run dev
+
+front-build:
+	npm run build
+
 # Quality
 
 test:
@@ -61,4 +70,5 @@ check: pint test
 
 .PHONY: build up down restart setup install \
         migrate fresh swagger optimize tinker exec logs \
+        front-install front-dev front-build \
         test pint pint-test check

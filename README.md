@@ -28,6 +28,25 @@ make setup
 
 API поднимется на `http://localhost:8080`.
 
+### Фронтенд (лендинг)
+
+Лендинг-презентация с формой обратной связи собран на **Vue 3 + Vite** и встроен прямо в приложение (`resources/js`, отдаётся blade-шаблоном `landing`). Он ходит в API с того же origin (`/api/v1`), поэтому CORS для него не нужен.
+
+Тулинг Vite выполняется **на хосте** (нужен Node.js 20+): каталог проекта монтируется в контейнер как volume, а нативные бинарники Vite несовместимы между Alpine (musl) и хостом (glibc), поэтому node-команды не запускаем внутри контейнера.
+
+```bash
+make front-install    # npm ci — поставить зависимости (один раз)
+make front-build      # npm run build — собрать ассеты в public/build
+```
+
+После `make front-build` лендинг открывается на `http://localhost:8080/`.
+
+**Dev-режим с hot-reload** (Vite dev-сервер + HMR):
+```bash
+make front-dev        # npm run dev, слушает http://localhost:5173
+```
+HTML по-прежнему отдаёт nginx на `:8080`, а ассеты — dev-сервер Vite на `:5173` (laravel-vite-plugin создаёт файл `hot` и переключает `@vite` на него). Держите обе вкладки процесса открытыми: `docker compose` для API и `make front-dev` для фронта. Останов dev-сервера — `Ctrl+C`, после чего снова работает собранная версия из `public/build`.
+
 ### Настройка переменных окружения (`.env`)
 | Переменная | Назначение | Дефолт |
 |---|---|---|
@@ -43,7 +62,8 @@ API поднимется на `http://localhost:8080`.
 | `CORS_ALLOWED_ORIGINS` | разрешённые origin фронта (через запятую) | `http://localhost:3000,http://localhost:5173` |
 
 ### Команды (Makefile)
-`make up` / `down` / `restart` · `make migrate` · `make swagger` · `make test` · `make pint` · `make logs` · `make exec` (шелл в контейнере) · `make clear` (down + удалить volumes).
+`make up` / `down` / `restart` · `make migrate` · `make swagger` · `make test` · `make pint` · `make logs` · `make exec` (шелл в контейнере).
+Фронтенд: `make front-install` · `make front-dev` · `make front-build`.
 
 ---
 
@@ -55,6 +75,11 @@ API поднимется на `http://localhost:8080`.
 - Redis 7 — кеш и счётчик rate limiting
 - Nginx (Brotli) + PHP-FPM
 - Composer
+
+**Frontend**
+- Vue 3 (`<script setup>`) + Vite 8 — лендинг с формой обратной связи.
+- Tailwind v4 подключён, но лендинг свёрстан на собственных CSS-токенах (scoped-стили в SFC).
+- Шрифты self-hosted через `laravel-vite-plugin/fonts` (Space Grotesk, IBM Plex Mono, Instrument Sans).
 
 **AI**
 - OpenAI Chat Completions API (`gpt-4o-mini`) — генерация тематической цитаты по комментарию.
@@ -222,6 +247,7 @@ User-сообщение — сам текст комментария.
 - Слой-ядро `App\Core` (AbstractRepository / DTO / Request / Resource) по образцу существующего core-модуля в проекте стартапа (модульный монолит).
 - Большая часть кода по указанной архитектуре: Request → DTO → Job → Repository → Mailable, rate limiting, логирование, глобальный error handler.
 - AI-слой: OpenAI-генератор, эвристический fallback, оркестратор.
+- Весь фронтенд
 
 **Примеры промптов**
 - «Перенеси конфиги докера, nginx и Makefile в текущий проект, возьми из проекта стартапа как референс, лишнее вырежи».

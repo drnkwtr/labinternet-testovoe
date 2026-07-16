@@ -2,8 +2,101 @@
 
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
+@source './**/*.vue';
 
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+}
+
+:root {
+    /* Палитра: тёплая бумага · чернила · сигнальный акцент */
+    --paper: #f3f1ea;
+    --paper-2: #ece9df;
+    --ink: #17191c;
+    --ink-soft: #3a3d42;
+    --muted: #74736a;
+    --line: #d8d4c8;
+    --line-strong: #c6c1b2;
+    --accent: #e8452b;
+    --accent-ink: #c2381f;
+    --ok: #1f7a4d;
+
+    --font-display: 'Space Grotesk', 'Instrument Sans', system-ui, sans-serif;
+    --font-body: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+
+    --maxw: 1120px;
+    --radius: 4px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.001ms !important;
+        transition-duration: 0.001ms !important;
+    }
+}
+
+body {
+    margin: 0;
+    background-color: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 17px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+}
+
+/* Тонкая «миллиметровка» на фоне — отсылка к чертежу API */
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+    background-image:
+        linear-gradient(to right, rgba(23, 25, 28, 0.035) 1px, transparent 1px),
+        linear-gradient(to bottom, rgba(23, 25, 28, 0.035) 1px, transparent 1px);
+    background-size: 44px 44px;
+    -webkit-mask-image: radial-gradient(ellipse 90% 60% at 50% 0%, black 20%, transparent 80%);
+    mask-image: radial-gradient(ellipse 90% 60% at 50% 0%, black 20%, transparent 80%);
+}
+
+#app {
+    position: relative;
+    z-index: 1;
+}
+
+::selection {
+    background: var(--accent);
+    color: #fff;
+}
+
+a {
+    color: inherit;
+}
+
+.mono {
+    font-family: var(--font-mono);
+    font-feature-settings: 'zero' 1;
+}
+
+*:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 2px;
 }
