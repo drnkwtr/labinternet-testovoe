@@ -7,6 +7,7 @@ namespace App\Jobs;
 use App\DTO\Contact\ContactDTO;
 use App\DTO\Contact\StoreContactDTO;
 use App\Repositories\ContactRepository;
+use App\Services\Contact\ContactNotifier;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -29,7 +30,7 @@ class ProcessContactSubmissionJob implements ShouldQueue
     ) {
     }
 
-    public function handle(ContactRepository $repository): void
+    public function handle(ContactRepository $repository, ContactNotifier $notifier): void
     {
         /** @var ContactDTO $contact */
         $contact = $repository->store($this->dto);
@@ -38,5 +39,7 @@ class ProcessContactSubmissionJob implements ShouldQueue
             'contact_id' => $contact->id,
             'email' => $contact->email,
         ]);
+        // there might be error logger with try/catch, but we use async email sending
+        $notifier->notify($contact);
     }
 }
