@@ -1,0 +1,81 @@
+{
+  "info": {
+    "name": "Landing Contact API",
+    "description": "Форма обратной связи лендинга: контакт, health, metrics.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    }
+  ],
+  "item": [
+    {
+      "name": "Contact — submit (valid)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/contact",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "contact"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"Иван Иванов\",\n  \"phone\": \"+7 900 123-45-67\",\n  \"email\": \"ivan@example.com\",\n  \"comment\": \"Здравствуйте, хочу обсудить проект.\"\n}"
+        },
+        "description": "204 No Content — заявка принята в очередь."
+      }
+    },
+    {
+      "name": "Contact — submit (invalid → 422)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Accept", "value": "application/json" }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/contact",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "contact"]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"name\": \"\",\n  \"phone\": \"abc\",\n  \"email\": \"not-an-email\",\n  \"comment\": \"hi\"\n}"
+        },
+        "description": "422 — ошибка валидации, JSON с полем errors."
+      }
+    },
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "health"]
+        },
+        "description": "200 ok / 503 degraded — статус БД и кеша."
+      }
+    },
+    {
+      "name": "Metrics",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "url": {
+          "raw": "{{baseUrl}}/api/v1/metrics",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "v1", "metrics"]
+        },
+        "description": "200 — агрегированная статистика обращений."
+      }
+    }
+  ]
+}

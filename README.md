@@ -1,58 +1,249 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Landing Contact API
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Backend-сервис формы обратной связи лендинга: приём заявки → валидация → очередь → email-уведомления (владельцу и отправителю) с AI-цитатой по смыслу обращения.
 
-## About Laravel
+- API-документация (Swagger UI): `http://localhost:8080/api/documentation`
+- OpenAPI JSON: `http://localhost:8080/docs`
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+---
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## 1. Как запустить проект
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### Требования
+- Docker + Docker Compose (всё крутится в контейнерах, локальные PHP/Composer не нужны).
 
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
-
+### Быстрый старт
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+cp .env.example .env          # значения по умолчанию сразу рабочие
+docker compose up -d --wait   # nginx + postgres + redis + app
+docker compose exec app php artisan key:generate
+docker compose exec app php artisan migrate --force
+docker compose exec app php artisan l5-swagger:generate
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+Либо через Makefile (после `cp .env.example .env`):
+```bash
+make setup
+```
 
-## Contributing
+API поднимется на `http://localhost:8080`.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+### Настройка переменных окружения (`.env`)
+| Переменная | Назначение | Дефолт |
+|---|---|---|
+| `APP_PORT` | HTTP-порт nginx на хосте | `8080` |
+| `DB_HOST_PORT` / `REDIS_HOST_PORT` | host-порты БД/Redis (сменить, если 5432/6379 заняты) | `5432` / `6379` |
+| `QUEUE_CONNECTION` | драйвер очереди | `sync` |
+| `CACHE_STORE` | хранилище кеша (rate limit) | `redis` |
+| `MAIL_MAILER` | почтовый драйвер (`log` — письма пишутся в файл) | `log` |
+| `CONTACT_OWNER_EMAIL` | адрес владельца для уведомлений | `owner@example.com` |
+| `CONTACT_RATE_LIMIT_MAX` / `CONTACT_RATE_LIMIT_DECAY` | лимит: запросов / за сколько секунд | `5` / `60` |
+| `OPENAI_API_KEY` | ключ OpenAI (пустой → сразу heuristic fallback) | пусто |
+| `OPENAI_MODEL` | модель | `gpt-4o-mini` |
+| `CORS_ALLOWED_ORIGINS` | разрешённые origin фронта (через запятую) | `http://localhost:3000,http://localhost:5173` |
 
-## Code of Conduct
+### Команды (Makefile)
+`make up` / `down` / `restart` · `make migrate` · `make swagger` · `make test` · `make pint` · `make logs` · `make exec` (шелл в контейнере) · `make clear` (down + удалить volumes).
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+---
 
-## Security Vulnerabilities
+## 2. Стек технологий
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+**Backend**
+- PHP 8.4, Laravel 13
+- PostgreSQL 16 — хранение обращений
+- Redis 7 — кеш и счётчик rate limiting
+- Nginx (Brotli) + PHP-FPM
+- Composer
 
-## License
+**AI**
+- OpenAI Chat Completions API (`gpt-4o-mini`) — генерация тематической цитаты по комментарию.
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+**Библиотеки**
+- `darkaonline/l5-swagger` (+ `zircote/swagger-php`) — OpenAPI/Swagger из PHP-атрибутов.
+- HTTP-клиент Laravel (Guzzle) — вызов OpenAI.
+
+---
+
+## 3. Архитектура
+
+### Слои
+```
+Controller → (Request → DTO) → Service / Job (Handler) → Repository → Model
+                                        ↘ Resource ← DTO
+```
+- **Controller** — тонкий, только приём запроса и формирование ответа.
+- **FormRequest** — валидация + санитизация, `toDto()` собирает immutable DTO.
+- **Service** — бизнес-логика (`ContactQuoteService`, `ContactNotifier`, `MetricsService`, `HealthService`).
+- **Job** — `ProcessContactSubmissionJob` оркестрирует поток заявки в очереди.
+- **Repository** — доступ к данным поверх Eloquent, наружу отдаёт DTO.
+- **DTO** — неизменяемые объекты передачи данных; `Resource` рендерит их в JSON.
+
+### Структура проекта
+```
+app/
+├── Core/                      # переиспользуемое ядро (по образцу core-модуля)
+│   ├── DTO/Models/            # AbstractModelDTO, ModelDTOInterface
+│   ├── Http/Requests/         # AbstractRequest, RequestInterface, RequestDTOInterface
+│   ├── Http/Resources/        # AbstractResource
+│   ├── Http/Controllers/      # ApiController
+│   └── Repositories/          # AbstractRepository, MappableInterface
+├── DTO/                       # Contact / Ai / Metrics / Health
+├── Http/
+│   ├── Controllers/Api/V1/    # Contact, Health, Metrics
+│   ├── Requests/              # StoreContactRequest, ...
+│   ├── Resources/             # ContactResource, ContactMetricsResource
+│   └── Middleware/ApiLogger   # логирование запросов в файл
+├── Jobs/ProcessContactSubmissionJob
+├── Mail/                      # ContactReceivedOwnerMail, ContactCopyUserMail
+├── Repositories/ContactRepository
+├── Services/                  # Ai / Contact / Metrics / Health
+└── Types/QuoteSource
+```
+
+### Паттерны
+- **Repository** — изоляция доступа к данным за интерфейсом `AbstractRepository`.
+- **DTO + Mapper** — данные ходят между слоями неизменяемыми объектами (`MappableInterface::map()`), а не массивами/моделями.
+- **Service layer / Handler** — бизнес-логика вне контроллеров; тяжёлая обработка вынесена в Job.
+- **Strategy + graceful degradation** — `QuoteGenerator` (OpenAI / heuristic) за общим интерфейсом, `ContactQuoteService` переключает стратегии.
+
+### Обоснование выбора
+- **Laravel** — быстрый REST, встроенные валидация/очереди/почта/rate limiting, зрелая экосистема.
+- **Ядро `App\Core`** — общие базовые классы (Repository/DTO/Request/Resource) для единообразия (в более крупном проекте круто сочетается с модульным монолитом).
+- **Очередь `sync`** — по ТЗ достаточно; код при этом уже «queue-ready» — смена драйвера включает фоновую обработку без изменения логики.
+- **Postgres + Redis** — показать работу с БД (обращения) и in-memory-кешем (rate limit); при этом логи пишутся в файл.
+
+---
+
+## 4. Реализация API
+
+Базовый префикс — `/api`, версия — `/v1`.
+
+### `POST /api/v1/contact`
+Приём заявки. Валидация → постановка в очередь (`204 No Content`). Обработка (сохранение, AI, письма) идёт в Job.
+
+**Тело запроса**
+| Поле | Правила |
+|---|---|
+| `name` | required, string, 2–100 |
+| `phone` | required, string, 5–20, `^\+?[0-9\s\-()]+$` |
+| `email` | required, email(rfc), ≤255 |
+| `comment` | required, string, 5–2000 |
+
+**Запрос**
+```bash
+curl -i -X POST http://localhost:8080/api/v1/contact \
+  -H "Content-Type: application/json" -H "Accept: application/json" \
+  -d '{
+    "name": "Иван Иванов",
+    "phone": "+7 900 123-45-67",
+    "email": "ivan@example.com",
+    "comment": "Здравствуйте, хочу обсудить проект."
+  }'
+```
+
+**204 No Content** — успех, тело ответа пустое.
+
+### `GET /api/v1/health`
+Статус сервиса и зависимостей (БД, кеш). `200` — всё ок, `503` — деградация.
+```bash
+curl http://localhost:8080/api/v1/health -H "Accept: application/json"
+```
+```json
+{ "status": "ok", "checks": { "database": true, "cache": true }, "timestamp": "2026-07-16T16:01:49+00:00" }
+```
+
+### `GET /api/v1/metrics`
+Агрегированная статистика обращений (из БД).
+```bash
+curl http://localhost:8080/api/v1/metrics -H "Accept: application/json"
+```
+```json
+{ "total": 28, "today": 28, "last_7_days": 28, "last_contact_at": "2026-07-16T15:50:01.000000Z" }
+```
+
+### Валидация и обработка ошибок
+Глобальный обработчик (`bootstrap/app.php`) для `api/*` всегда отдаёт JSON.
+
+| Статус | Когда | Тело |
+|---|---|---|
+| `422` | ошибка валидации | `{ "message": "...", "errors": { "email": ["..."] } }` |
+| `429` | превышен лимит (анти-спам) | `{ "message": "Too Many Attempts." }` + заголовки `Retry-After`, `X-RateLimit-*` |
+| `404` | нет роута/ресурса | `{ "message": "Запрашиваемый ресурс не найден." }` |
+| `405` | неверный метод | `{ "message": "..." }` |
+
+Пример `422`:
+```json
+{
+  "message": "The email field must be a valid email address. (and 1 more error)",
+  "errors": {
+    "email": ["The email field must be a valid email address."],
+    "comment": ["The comment field must be at least 5 characters."]
+  }
+}
+```
+
+Примеры запросов также лежат в Postman-коллекции: [`docs/postman_collection.json`](docs/postman_collection.json).
+
+---
+
+## 5. AI-интеграция
+
+**Что делает.** По тексту `comment` подбирается короткая тематическая цитата, которая добавляется в оба письма (владельцу и отправителю).
+
+**Провайдер.** OpenAI Chat Completions (`gpt-4o-mini`) — `App\Services\Ai\OpenAiQuoteGenerator`.
+
+**Промпт (system).**
+```
+Ты подбираешь одну короткую вдохновляющую цитату на русском языке,
+уместную по смыслу комментария пользователя из формы обратной связи.
+Ответь только текстом цитаты и автором в скобках, без кавычек и пояснений.
+Не более 200 символов.
+```
+User-сообщение — сам текст комментария.
+
+**Graceful fallback.** `ContactQuoteService` вызывает OpenAI, и при **любой** недоступности (нет ключа, `401`, отсутствие квоты, rate limit, сетевая ошибка, пустой ответ) ловит исключение, пишет `WARNING` в лог и переключается на офлайн-эвристику `HeuristicQuoteGenerator`. Сервис всегда возвращает цитату — заявка не ломается.
+
+**Эвристика (3 варианта)** — по ключевым словам в комментарии:
+1. проблема/жалоба (`проблем`, `помощ`, `не работает`, `баг`, …) — цитата про преодоление;
+2. сотрудничество/работа (`проект`, `сотруднич`, `вакан`, …) — про действие;
+3. иначе — общая вдохновляющая цитата.
+
+Источник цитаты (`openai` / `fallback`) фиксируется в DTO и выводится в письме владельцу.
+
+---
+
+## 6. Что сделано с помощью AI
+
+Проект написан в паре с AI-ассистентом (Claude Code, Opus).
+
+**Что генерировалось с помощью AI**
+- Архитектура, слои и концепция целиком на разработчике. 
+- Слой-ядро `App\Core` (AbstractRepository / DTO / Request / Resource) по образцу существующего core-модуля в проекте стартапа (модульный монолит).
+- Большая часть кода по указанной архитектуре: Request → DTO → Job → Repository → Mailable, rate limiting, логирование, глобальный error handler.
+- AI-слой: OpenAI-генератор, эвристический fallback, оркестратор.
+
+**Примеры промптов**
+- «Перенеси конфиги докера, nginx и Makefile в текущий проект, возьми из проекта стартапа как референс, лишнее вырежи».
+- «Реализуй эндпоинт по образцу core-модуля: Request→toDto→DTO→Repository→Resource, отправку формы в очередь через Job».
+- «AI как OpenAI, при недоступности — эвристический fallback по ключевым словам, цитату в письмо».
+
+**Что правилось вручную (после проверки)**
+- Правки по желаемой архитектуре, упрощение перемудренного кода и т.д.
+- Rate limiter: у `Limit` в Laravel 13 параметр `decaySeconds`, а не `decayMinutes`.
+- Эвристика: ключ `работ` ложно матчил «не рабо**тает**» → issue-ветку вынесли выше collab.
+- Health-check кеша: Redis отдаёт числа строкой (`"1"`), строгий `=== 1` давал ложный false.
+- Обработка ошибки доставки письма: под очередью `try/catch` в диспатчере не ловит сбой доставки → перенесли в хук `Mailable::failed()`. Может быть перенесено в кастомную Джобу, но исходя из ТЗ, смысла мало.
+---
+
+## 7. Хранение данных
+
+| Что | Где | Детали |
+|---|---|---|
+| **Обращения** | PostgreSQL, таблица `contacts` | через `ContactRepository`; поля `name/phone/email/comment` + метаданные `ip_address/user_agent` |
+| **Логи запросов** | файл `storage/logs/requests.log` | канал `requests` + middleware `ApiLogger` (method, path, status, ip, user-agent) |
+| **Логи приложения / письма** | файл `storage/logs/laravel.log` | при `MAIL_MAILER=log` письма пишутся сюда |
+| **Rate limiting** | Redis | счётчик по IP через `RateLimiter` (`throttle:contact`), лимит из `config/contact.php` |
+| **Статистика** | PostgreSQL (агрегация) | `MetricsService` считает `total / today / last_7_days / last_contact_at` из `contacts` |
+
+По ТЗ достаточно файлового хранилища — здесь дополнительно показана работа с БД (обращения, статистика) и Redis (rate limit), при этом логирование остаётся файловым.
