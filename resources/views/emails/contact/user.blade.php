@@ -8,6 +8,10 @@
     <h3>Копия вашего обращения</h3>
     <p style="white-space: pre-wrap;">{{ $contact->comment }}</p>
 
+    <blockquote style="margin: 20px 0; padding: 12px 16px; border-left: 4px solid #4f46e5; background: #f5f5ff; font-style: italic;">
+        {{ $quote->text }}
+    </blockquote>
+
     <hr>
     <p style="color: #888; font-size: 12px;">
         Это автоматическое письмо, отвечать на него не нужно.

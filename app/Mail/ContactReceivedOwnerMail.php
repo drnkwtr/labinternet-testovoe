@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Mail;
 
+use App\DTO\Ai\GeneratedQuoteDTO;
 use App\DTO\Contact\ContactDTO;
 use Illuminate\Bus\Queueable;
 use Illuminate\Mail\Mailable;
@@ -20,6 +21,7 @@ class ContactReceivedOwnerMail extends Mailable
 
     public function __construct(
         public readonly ContactDTO $contact,
+        public readonly GeneratedQuoteDTO $quote,
     ) {
     }
 
@@ -34,7 +36,7 @@ class ContactReceivedOwnerMail extends Mailable
     {
         return new Content(
             view: 'emails.contact.owner',
-            with: ['contact' => $this->contact],
+            with: ['contact' => $this->contact, 'quote' => $this->quote],
         );
     }
 

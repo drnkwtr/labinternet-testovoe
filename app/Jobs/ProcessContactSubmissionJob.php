@@ -7,6 +7,7 @@ namespace App\Jobs;
 use App\DTO\Contact\ContactDTO;
 use App\DTO\Contact\StoreContactDTO;
 use App\Repositories\ContactRepository;
+use App\Services\Ai\ContactQuoteService;
 use App\Services\Contact\ContactNotifier;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -30,8 +31,11 @@ class ProcessContactSubmissionJob implements ShouldQueue
     ) {
     }
 
-    public function handle(ContactRepository $repository, ContactNotifier $notifier): void
-    {
+    public function handle(
+        ContactRepository $repository,
+        ContactQuoteService $quotes,
+        ContactNotifier $notifier,
+    ): void {
         /** @var ContactDTO $contact */
         $contact = $repository->store($this->dto);
 
@@ -39,7 +43,12 @@ class ProcessContactSubmissionJob implements ShouldQueue
             'contact_id' => $contact->id,
             'email' => $contact->email,
         ]);
+
+        // AI step: generate a quote from the comment (OpenAI, with heuristic
+        // fallback). Never throws — always returns a quote.
+        $quote = $quotes->forComment($contact->comment);
+
         // there might be error logger with try/catch, but we use async email sending
-        $notifier->notify($contact);
+        $notifier->notify($contact, $quote);
     }
 }
