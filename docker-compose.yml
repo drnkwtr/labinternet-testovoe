@@ -77,6 +77,14 @@ services:
     networks:
       - app
 
+  node:
+    image: node:22-alpine
+    working_dir: /app
+    volumes:
+      - ./:/app
+    profiles: ["build"]
+    command: sh -c "npm install --no-audit --no-fund && npm run build"
+
   app:
     build:
       dockerfile: ./Dockerfile
